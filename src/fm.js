@@ -231,7 +231,14 @@
    */
   _.ob.merge = function(/* Object, Object, Object, ... */){
     var a  = _.ar.clone(arguments), or = a.shift();
-    return a.reduce(_.ob.combine, or);
+return a.reduce(function(m, o){
+      (_.vr.type(o) === 'object')
+        && _.ob.each(o, function(v, i){
+          _.ob.prop(m, i, v);
+        });
+      return m;
+    }, or);
+    //return a.reduce(_.ob.combine, or);
   }
 
 
