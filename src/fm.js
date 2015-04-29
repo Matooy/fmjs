@@ -231,28 +231,69 @@
    */
   _.ob.merge = function(/* Object, Object, Object, ... */){
     var a  = _.ar.clone(arguments), or = a.shift();
-    return a.reduce(function(m, o){
-      (_.vr.type(o) === 'object')
-        && _.ob.each(o, function(v, i){
-          _.ob.prop(m, i, v);
-        });
-      return m;
-    }, or);
+    return a.reduce(_.ob.combine, or);
   }
 
 
-  _.ob.associated = function(o, ref){
+  /* object.absorb :: Object -> [Function,Function...] -> Object
+   *
+   * apply fn.pack to a specific object.
+   */
+  _.ob.absorb = function(ob, fns){
+    return _.ob.merge(ob, _.fn.pack(fns));
+  }
+
+
+  /* object.combine :: Object -> Object -> Object
+   *
+   * Merge object to object.
+   *
+   */
+  _.ob.combine = function(m, o){
+    (o && _.vr.type(o) === 'object')
+      && _.ob.each(o, function(v, k){
+        _.ob.assign(m, k, v);
+      });
+    return m;
+  }
+
+
+  /* object.assign :: Object -> String -> Value -> Object
+   *
+   * Assign properties to Object.
+   *
+   */
+  _.ob.assign = function(o, k, v){
+    if(_.vr.type(v) === 'object'){
+      (!o[k]) && _.ob.prop(o, k, {});
+      _.ob.combine(o[k], v);
+    }else{
+      _.ob.prop(o, k, v);
+    }
+    return o;
+  }
+
+
+  /* object.thaw :: Object -> Array -> Boolean
+   *
+   * _.ob.thaw({a: {b: 1}}, 'a.b');
+   * _.ob.thaw({a: {b: 1}}, ['a', 'b']);
+   *
+   * Both will return `1`
+   *
+   */
+  _.ob.thaw = function(o, ref){
     return (ref)
       ? (function(){
-          var s = _.vr.valid(ref, 'array')
-                ? ref : ref.split(".")
+          var s = _.vr.valid(ref, 'array') ? ref : ref.split(".")
             , k = s.shift();
           return (o.hasOwnProperty(k))
-            ? _.ob.associated(o[k], s.join("."))
-            : false;
-        })
-      : false ;
+            ? (s.length ? _.ob.thaw(o[k], s.join(".")) : o[k])
+            : undefined;
+        })()
+      : undefined;
   }
+  _.ob.dig = _.ob.thaw;
 
 
   /* object.keys :: Object -> Array
@@ -303,6 +344,10 @@
 
   _.ob.has = function(o, k){
     return o.hasOwnProperty(k);
+  }
+
+  _.ob.know = function(o, k){
+    return typeof o[k] !== 'undefined';
   }
 
 
@@ -544,10 +589,11 @@
    *
    * pack([hello]) => { hello: function hello }
    */
-  _.fn.pack = function(fns) {
+  _.fn.pack = function(fns, def) {
     return fns.reduce(function(m, fn){
-      return (m[_.fn.nameof(fn)] = fn) && m;
-    }, {});
+      (m[_.fn.nameof(fn)] = fn);
+      return m;
+    }, def || {});
   }
 
 

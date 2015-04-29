@@ -1,0 +1,114 @@
+<html>
+
+<head>
+<script type="text/javascript" src="./src/fm.js"></script>
+<script src="https://rawgit.com/Matooy/codesnapjs/master/src/codesnap.js"></script>
+
+<link rel="stylesheet" href="./asset/extra/prism/prism.css">
+<script type="text/javascript" src="./asset/extra/prism/prism.js" data-default-language="javascript"></script>
+
+<style>
+
+h1 {
+  font-size: 3.2em;
+}
+
+#content {
+  width: 60%;
+  min-width: 800px;
+  margin: auto;
+}
+
+pre>code {
+  font-size: .9em;
+}
+
+.codesnap-container {
+  margin-bottom: 2em;
+}
+
+.codesnap-title {
+  font-size: 1.8em;
+}
+
+.codesnap-result {
+  border: 1px solid #ccc;
+}
+
+.codesnap-result-caption {
+  border-top: 1px dashed #ccc;
+  padding-top: .1em;
+  color: #aaa;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div id="content" class="language-javascript">
+  <h1>FMJS</h1>
+  <p>Small helper collection.</p>
+</div>
+
+<script>
+
+var files = [
+  ['ob.assign', {
+    title: 'ob.assign',
+    description: "Clone new property recursively."
+  }],
+  ['ob.merge', {
+    title: "ob.merge",
+    description: "Merge objects."
+  }],
+  ['ob.thaw', {
+    title: 'ob.thaw',
+    description: "Pick specific property as string"
+  }],
+  ['ob.absorb', {
+    title: 'ob.absorb',
+    description: "Apply fn.pack to a specific object."
+  }],
+  ['fn.pack', {
+    title: "fn.pack",
+    description: "Package named functions to object."
+  }],
+  ['fn.partial', {
+    title: "fn.partial",
+    description: "Make a function partialized."
+  }],
+];
+
+var result;
+
+(new CodeSnap({
+  wrapper: 'content',
+  files: files,
+  before: function(){
+    result = undefined;
+  },
+  loaded: function(f, src){
+    var wrp = document.getElementById('codesnap-' +f[0]);
+
+    var res = document.createElement('pre');
+    var res_cap = document.createElement('div');
+
+    res.setAttribute('class', 'codesnap-result');
+    res.innerHTML = JSON.stringify(result);
+
+    res_cap.innerHTML = 'content of result';
+    res_cap.setAttribute('class', 'codesnap-result-caption');
+
+    wrp.appendChild(res_cap);
+    wrp.appendChild(res);
+
+    Prism.highlightElement(res);
+    Prism.highlightElement(document.getElementById('codesnap-' +f[0]+ '-code'));
+  }
+}).load());
+</script>
+</body>
+
+</html>
