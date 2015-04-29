@@ -231,14 +231,7 @@
    */
   _.ob.merge = function(/* Object, Object, Object, ... */){
     var a  = _.ar.clone(arguments), or = a.shift();
-return a.reduce(function(m, o){
-      (_.vr.type(o) === 'object')
-        && _.ob.each(o, function(v, i){
-          _.ob.prop(m, i, v);
-        });
-      return m;
-    }, or);
-    //return a.reduce(_.ob.combine, or);
+    return a.reduce(_.ob.combine, or);
   }
 
 
@@ -273,7 +266,7 @@ return a.reduce(function(m, o){
   _.ob.assign = function(o, k, v){
     if(_.vr.type(v) === 'object'){
       (!o[k]) && _.ob.prop(o, k, {});
-      _.ob.combine(o[k], v);
+      o[k] = v;
     }else{
       _.ob.prop(o, k, v);
     }
