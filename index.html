@@ -9,6 +9,10 @@
 
 <style>
 
+body {
+  font-family: Geogia;
+}
+
 h1 {
   font-size: 3.2em;
 }
@@ -23,12 +27,26 @@ pre>code {
   font-size: .9em;
 }
 
+#codesnap-index {
+  margin-bottom: 1em;
+}
+
+.codesnap-index-anchor {
+  margin: 4px;
+  color: #555;
+  display: inline-block;
+  text-decoration: none;
+  border: 1px solid #ccc;
+    padding: .1em .4em;
+}
+
 .codesnap-container {
   margin-bottom: 2em;
 }
 
 .codesnap-title {
-  font-size: 1.8em;
+  font-size: 2em;
+  margin-bottom: .2em;
 }
 
 .codesnap-result {
@@ -49,12 +67,36 @@ pre>code {
 
 <div id="content" class="language-javascript">
   <h1>FMJS</h1>
-  <p>Small helper collection.</p>
+  <p>A Collection of tiny helpers. "Functions by Matooy for JavaScript"</p>
 </div>
 
 <script>
 
 var files = [
+  ['vr.type', {
+    title: 'vr.type',
+    description: "Return variable type as string."
+  }],
+  ['vr.empty', {
+    title: 'vr.empty',
+    description: "Check variable is empty."
+  }],
+  ['vr.is_f', {
+    title: 'vr.is_f',
+    description: "Check variable is function."
+  }],
+  ['vr.valid', {
+    title: 'vr.valid',
+    description: "Check variable is function."
+  }],
+  ['vr.validall', {
+    title: 'vr.validall',
+    description: "Apply vr.valid() function to all arguments"
+  }],
+  ['vr.monitor', {
+    title: 'vr.monitor',
+    description: "Validate variable later and trigger callbacks."
+  }],
   ['ob.assign', {
     title: 'ob.assign',
     description: "Clone new property recursively."
@@ -71,14 +113,75 @@ var files = [
     title: 'ob.absorb',
     description: "Apply fn.pack to a specific object."
   }],
+  ['ob.diff', {
+    title: 'ob.diff',
+    description: "Find differences between twe objects"
+  }],
+  ['ar.repeat', {
+    title: 'ar.repeat',
+    description: "Fill array with specific value and length."
+  }],
+  ['ar.range', {
+    title: 'ar.range',
+    description: "Fill array with incremented integer"
+  }],
+  ['ar.clone', {
+    title: 'ar.clone',
+    description: "Clone array."
+  }],
+  ['ar.diff', {
+    title: 'ar.diff',
+    description: "Find differences among arrays."
+  }],
+  ['ar.intersect', {
+    title: 'ar.intersect',
+    description: "Intersect array"
+  }],
+  ['ar.has', {
+    title: 'ar.has',
+    description: "Check array has a value."
+  }],
+  ['ar.sort', {
+    title: 'ar.sort',
+    description: "Sort array with a callback. 'return false' will ignore element completely. 'return null' will put element at tail."
+  }],
+  ['st.repeat', {
+    title: 'st.repeat',
+    description: "Repeat string n times."
+  }],
+  ['st.fill', {
+    title: 'st.fill',
+    description: "Repeat string untill fill length n."
+  }],
+  ['st.pad', {
+    title: 'st.pad',
+    description: "Put padding string to string"
+  }],
+  ['st.sort', {
+    title: 'st.sort',
+    description: "Sort string chars."
+  }],
   ['fn.pack', {
     title: "fn.pack",
     description: "Package named functions to object."
+  }],
+  ['fn.proxy', {
+    title: "fn.proxy",
+    description: "Did you know $.proxy ? I believe almost same as it. Instance binder."
   }],
   ['fn.partial', {
     title: "fn.partial",
     description: "Make a function partialized."
   }],
+  ['fn.promise', {
+    title: "fn.promise",
+    description: "Return a FM_Promise object."
+  }],
+  ['fn.swear', {
+    title: "fn.swear",
+    description: "Observe many of FM_Promise. $.when()"
+  }]
+
 ];
 
 var result;
@@ -98,7 +201,7 @@ var result;
     res.setAttribute('class', 'codesnap-result');
     res.innerHTML = JSON.stringify(result);
 
-    res_cap.innerHTML = 'content of result';
+    res_cap.innerHTML = 'content of result variable';
     res_cap.setAttribute('class', 'codesnap-result-caption');
 
     wrp.appendChild(res_cap);

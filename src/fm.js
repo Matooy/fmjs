@@ -2,24 +2,28 @@
 
   'use strict';
 
-  var
-    version     = '0.0.1'
-  , description = 'This is WIP forever.'
-  , license     = 'MIT'
-
-  // If you want to bind to other namespace,
+  // If you want to bind to an other namespace,
   // please change this value.
-  // For example, `underxcore`, `xepto` or something.
-  , namespace   = 'FM'
-  ;
+  // For example, `underxcore`, `xepto` or something else.
+  var namespace   = 'FM';
 
   // Load
-  root[namespace] = def({
-      'version'     : version
-    , 'description' : description
-    , 'license'     : license
+  var src = def({
+      'version'     : '0.0.1'
+    , 'description' : 'This is WIP forever.'
+    , 'license'     : 'MIT'
     , 'namespace'   : namespace
   });
+
+  // Load
+  if(typeof exports !== 'undefined'){
+    if(typeof module !== 'undefined' && module.exports){
+      exports = module.exports = src;
+    }
+    exports[namespace] = src;
+  }else{
+    root[namespace] = src;
+  }
 
 })(this, function($){
 
@@ -91,11 +95,24 @@
   }
 
 
-  _.vr.empty = function(v){
-    return (typeof v === 'undefined' || v === null || v === 0 || !v);
+  /* vr.empty :: a -> Boolean
+   *
+   * Return 'a' is empty or not (In my opinion.)
+   */
+  _.vr.empty = function(a){
+    return (
+      typeof a === 'undefined' || a === null || a === 0 || a === '' || a === NaN
+      || (_.vr.type(a) === 'array' && a.length === 0)
+      || (_.vr.type(a) === 'object' && _.ob.keys(a).length === 0 && a.constructor.name === 'Object')
+      || (_.vr.type(a) === 'function' && !!a.toString().match(/^function\s?\(\)\s{0,}\{\s{0,}\}$/))
+    );
   }
 
 
+  /* vr.is_f :: a -> Boolean
+   *
+   * Return a is function or not.
+   */
   _.vr.is_f = function(v){
     return _.vr.valid(v, 'function');
   }
@@ -266,7 +283,9 @@
   _.ob.assign = function(o, k, v){
     if(_.vr.type(v) === 'object'){
       (!o[k]) && _.ob.prop(o, k, {});
-      o[k] = v;
+      o[k] = (_.vr.type(o[k]) === 'object')
+           ? _.ob.merge(o[k], v)
+           : v;
     }else{
       _.ob.prop(o, k, v);
     }
@@ -382,8 +401,19 @@
     var ks = a_k.concat(b_k);
     ks.map(function(k){
       if(a.hasOwnProperty(k) && b.hasOwnProperty(k)){
-        if(a[k] !== b[k])
+        var ta = _.vr.type(a[k]);
+        var tb = _.vr.type(b[k]);
+
+        if(ta === tb){
+          if(ta === 'object'){
+            diff[k] = _.ob.diff(a[k], b[k]);
+          }else{
+            if(a[k] !== b[k])
+              diff[k] = b[k];
+          }
+        }else{
           diff[k] = b[k];
+        }
       }else if(a.hasOwnProperty(k)){
         diff[k] = a[k];
       }else if(b.hasOwnProperty(k)){
@@ -408,7 +438,7 @@
   }
 
 
-  /* array.range :: Integer -> Integer -> Array
+  /* ar.range :: Integer -> Integer -> Array
    *
    * Make ranged array.
    */
@@ -419,7 +449,7 @@
   }
 
 
-  /* array.clone :: Array -> Array
+  /* ar.clone :: Array -> Array
    *
    * Convert arguments object to array.
    */
@@ -428,14 +458,15 @@
   }
 
 
-  /* array.intersect :: Array -> Array -> Array
+  /* ar.intersect :: Array -> Array -> Array
    */
   _.ar.intersect = function(a, b){
     var ret = [];
     for(var i = 0; i < a.length; i++){
       for(var ii = 0; ii < b.length; ii++){
-        if (a[i] == b[ii]) {
+        if(a[i] == b[ii]){
           ret.push(a[i]);
+          // If found, break 1.
           break;
         }
       }
@@ -444,6 +475,23 @@
   }
 
 
+  /* ar.diff :: Array -> Array -> ... -> Array
+   *
+   * Find differences among arrays.
+   */
+  _.ar.diff = function(/* a, a, a ... */){
+    return _.ar.clone(arguments).reduce(function(r, arg){
+      return r.concat(arg).filter(function(v){
+        return (r.indexOf(v)<0 || arg.indexOf(v)<0);
+      });
+    }, []);
+  }
+
+
+  /* ar.has :: Array -> a -> Array[a]
+   *
+   * Shorthand for a.indexOf(n) > -1
+   */
   _.ar.has = function(a, n){
     return a.indexOf(n) > -1;
   }
@@ -521,19 +569,6 @@
   }
 
 
-  _.ar.sort_collection = function(a, k, o){
-    return _.ar.sort(a, function(n,m){
-      if(n.l >= m.l){
-        return 1;
-      }else if(n.l < m.l){
-        return - 1;
-      }else{
-        return null;
-      }
-    }, o);
-  }
-
-
 
 
   /* string.repeat :: String -> Integer -> String
@@ -557,9 +592,11 @@
   /* st_padding :: String -> Integer -> String -> Integer -> String
    *
    * Padding string.
+   * !lr -> Padding left
+   * lr  -> Padding right
    */
   _.st.pad = function(str, len, pad, lr){
-    var pd = _.st.repeat(pad || " ", len);
+    var pd = _.st.repeat(pad || " ", len - str.length);
     return String((!lr ? pd : '') + str + (lr ? pd : '')).slice(0, len)
   }
   // Alias: string.pad(str, len, pad, 0)
@@ -573,7 +610,7 @@
 
 
   _.st.sort = function(str, fnc, ord){
-    return _.ar.sort(str.split(''), fnc, ord);
+    return _.ar.sort(str.split(''), fnc, ord).join('');
   }
 
 
@@ -599,7 +636,7 @@
 
   /* func.nameof :: Function -> String
    *
-   * !! DONT trust this
+   * !! DONT trust this too much.
    *
    * Retrieve function name.
    */
@@ -611,7 +648,7 @@
 
   /* func.argsof :: Function -> Array
    *
-   * !! DONT trust this
+   * !! DONT trust this.
    *
    * Retrieve argument names of Function.
    */
@@ -623,7 +660,7 @@
   }
 
 
-  /* closure_bind_context :: Function -> Object -> Function
+  /* proxy :: Function -> Object -> Function
    *
    * Bind some callable to specific context.
    * Almost same as jQuery.proxy() method. Maybe.
@@ -633,6 +670,7 @@
       return c.apply(cn, p ? _.ar.clone(arguments).concat(p) : _.ar.clone(arguments));
     });
   }
+  _.fn.bind = function(c, cn, p){return _.fn.proxy(c, cn, p);}
 
 
   /* func.partial :: Function -> ... -> Function()
@@ -699,6 +737,103 @@
     return _.fn.partial.apply(
       context, [_.fn.proxy(fn, context)].concat(_.ar.clone(arguments).slice(2))
     );
+  }
+
+
+  /* fn.promise :: Callable -> Callable -> {FM_Promise}
+   *
+   * Really simple version of $.Deferred.
+   *
+   * FM_Promise contains
+   *   state
+   *   expired
+   *   then()
+   *   catch()
+   *   resolve()
+   *   reject()
+   * }
+   */
+  _.fn.promise = function(process){
+    return new (function FM_Promise(){
+      // Privates.
+      var queue    = {'resolved': [], 'rejected': []};
+      var state    = undefined;
+      var previous = undefined;
+      var triggeer = undefined;
+
+      function flush(){
+        for(var i = 0; i < queue[state].length; i++){
+          previous = queue[state][i].apply(null, [trigger, previous]);
+        }
+        reset();
+      }
+
+      function reset(){
+        queue.resolved = [];
+        queue.rejected = [];
+      }
+
+      this.state   = function(){
+        return state;
+      };
+
+      this.then    = _.fn.proxy(function(callback, error){
+        (callback) && queue['resolved'].push(callback);
+        (state == 'resolved') && flush();
+        (error) && this.catch(error);
+        return this;
+      }, this);
+
+      this.catch   = _.fn.proxy(function(callback){
+        (callback) && queue['rejected'].push(callback);
+        (state == 'rejected') && flush();
+        return this;
+      }, this);
+
+      [['resolve', 'resolved']
+      ,['reject' , 'rejected']
+      ].map(_.fn.proxy(function(tpl){
+        this[tpl[0]] = _.fn.proxy(function(s){
+          if(state) return (console.error('Expired promise was triggered.'));
+          state = tpl[1]; trigger = s; previous = trigger; flush();
+        }, this);
+      }, this));
+
+      reset();
+      (process) && process(
+        _.fn.proxy(function(s){ this.resolve(s); }, this),
+        _.fn.proxy(function(s){ this.reject(s); }, this)
+      );
+    })();
+  }
+
+
+  /*
+   */
+  _.fn.swear = function(arg){
+    var promise  = _.fn.promise();
+    var resolved = 0;
+    var results  = [];
+
+    var available = (_.vr.type(arg) === 'array' ? arg : _.ar.clone(arguments))
+      .filter(function(i){
+        // I dont know how to check both instance has same constructor.
+        return i.constructor.name == promise.constructor.name;
+      });
+
+    available.map(function(p, i){
+      p.then(function(s){
+        resolved++;
+        results[i] = s;
+        (resolved === available.length)
+          && promise.resolve.apply(promise, results);
+      }, function(e){
+        results[i] = e;
+        promise.reject.apply(promise, results);
+      });
+    });
+
+    return promise;
   }
 
 
