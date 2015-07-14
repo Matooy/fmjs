@@ -247,12 +247,12 @@
    * Merge objects recursively.
    */
   _.ob.merge = function(/* Object, Object, Object, ... */){
-    var a  = _.ar.clone(arguments), or = a.shift();
+    var a = _.ar.clone(arguments), or = a.shift();
     return a.reduce(_.ob.combine, or);
   }
 
 
-  /* object.absorb :: Object -> [Function,Function...] -> Object
+  /* object.absorb :: Object -> [Function...] -> Object
    *
    * apply fn.pack to a specific object.
    */
@@ -282,7 +282,7 @@
    */
   _.ob.assign = function(o, k, v){
     if(_.vr.type(v) === 'object'){
-      (!o[k]) && _.ob.prop(o, k, {});
+      (!o.hasOwnProperty(k)) && _.ob.prop(o, k, {});
       o[k] = (_.vr.type(o[k]) === 'object')
            ? _.ob.merge(o[k], v)
            : v;
