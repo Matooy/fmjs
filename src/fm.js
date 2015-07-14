@@ -442,9 +442,9 @@
    *
    * Make ranged array.
    */
-  _.ar.range = function(i, ii){
+  _.ar.range = function(i, ii, incr){
     var ret = [];
-    for(var i; i <= ii; i++){ ret.push(i); }
+    for(var i; i <= ii; i++){ ret.push((!incr)?i:incr(i)); }
     return ret;
   }
 
