@@ -1,16 +1,15 @@
+var m = FM.time.monitor(1800);
 
-var sample = 2;
+var d = FM.fn.instance(Date, '2015-04-28');
 
-FM.vr.monitor(sample, 1000, function(def){
-  return sample === def;
-})(
-  function(def){
-    console.log('Monitored variable "sample" is still ' + def);
-  },
-  function(def){
-    console.log('Monitored variable "sample" was changed to ' + sample + ' from ' + def);
-    return false;
-  }
-);
+window.addEventListener('resize', function(){
 
-result = sample = 4;
+  m(
+    window.innerHeight,
+    function(p){
+      (p === window.innerHeight)
+        && console.log('Resized and kept innerHeight 1.8sec');
+    }
+  );
+
+});
