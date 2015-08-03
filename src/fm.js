@@ -50,6 +50,10 @@
   _.html = {};
   // Event
   _.event = {};
+  // Time
+  _.time = {};
+  // Date
+  _.date = {};
 
 
 
@@ -196,42 +200,6 @@
   }
 
 
-  /* variable.monitor :: a -> Integer -> Function -> Function
-   *
-   * Monitor a variable and validate after N seconds.
-   * Maybe convenience to observe events fired too many times in "1" action.
-   * (like GUI events: window(resize|loaded), mouse(move|drag|select)... etc.)
-   *
-   * @example
-   *
-   * var o = {
-   *   foo: 1
-   * }
-   *
-   * _.vr.monitor(o, 1000, function(o){
-   *   return o.foo === 1;
-   * })(
-   *   function(o){
-   *     // Valid callback
-   *   },
-   *   function(o){
-   *     // Invalid callback
-   *   }
-   * )
-   *
-   * // This will cause "Invalid callback".
-   * o.foo = 2;
-   *
-   */
-  _.vr.monitor = function(tgt, tm, vld){
-    return function(clb, err){
-      setTimeout(function(){
-        (vld(tgt))
-          ? (typeof clb === 'function' && clb(tgt))
-          : (typeof err === 'function' && err(tgt));
-      }, tm);
-    }
-  }
 
 
 
@@ -634,6 +602,11 @@
   }
 
 
+  _.fn.instance = function(constructor){
+    return new (Function.prototype.bind.call(constructor, _.ar.clone(arguments).slice(1)));
+  }
+
+
   /* func.nameof :: Function -> String
    *
    * !! DONT trust this too much.
@@ -744,7 +717,7 @@
    *
    * Really simple version of $.Deferred.
    *
-   * FM_Promise contains
+   * FM_Promise contains below methods.
    *   state
    *   expired
    *   then()
@@ -752,6 +725,19 @@
    *   resolve()
    *   reject()
    * }
+   *
+   * var p = FM.fn.promise();
+   *
+   * p.then(function(first_trigger, previous_result){
+   *   return previous_result + 1;
+   * });
+   *
+   * p.always(function(first_trigger, previous_result){
+   *   return previous_result + 1;
+   * });
+   *
+   * p.resolve(2);
+   *
    */
   _.fn.promise = function(process){
     return new (function FM_Promise(){
@@ -763,7 +749,9 @@
 
       function flush(){
         for(var i = 0; i < queue[state].length; i++){
-          previous = queue[state][i].apply(null, [trigger, previous]);
+          previous = _.vr.type(queue[state][i] === 'function')
+                   ? queue[state][i].apply(null, trigger.concat(previous))
+                   : queue[state][i];
         }
         reset();
       }
@@ -790,19 +778,29 @@
         return this;
       }, this);
 
+      this.always = _.fn.proxy(function(callback){
+        this.then(callback, callback);
+        return this;
+      });
+
+      // resolve(), reject()
       [['resolve', 'resolved']
       ,['reject' , 'rejected']
       ].map(_.fn.proxy(function(tpl){
-        this[tpl[0]] = _.fn.proxy(function(s){
-          if(state) return (console.error('Expired promise was triggered.'));
-          state = tpl[1]; trigger = s; previous = trigger; flush();
+        this[tpl[0]] = _.fn.proxy(function(){
+          if(state) throw new Error('Expired promise was triggered.');
+          state = tpl[1]; trigger = FM.ar.clone(arguments); previous = trigger; flush();
         }, this);
       }, this));
 
       reset();
-      (process) && process(
-        _.fn.proxy(function(s){ this.resolve(s); }, this),
-        _.fn.proxy(function(s){ this.reject(s); }, this)
+      (process) && (
+        (_.vr.type(process) === 'function')
+          ? process(
+              _.fn.proxy(function(s){ this.resolve(s); }, this),
+              _.fn.proxy(function(s){ this.reject(s); }, this)
+            )
+          : (_.fn.proxy(function(){ this.resolve(process) }, this))()
       );
     })();
   }
@@ -956,9 +954,7 @@
 
 
   _.dom.find = function(selector, el){
-    var rt = (!_.vr.empty(el)?el:document).querySelector(_.html.escape_selector(selector));
-    //_.dom.extend_node(rt);
-    return rt;
+    return (!_.vr.empty(el)?el:document).querySelector(_.html.escape_selector(selector));
   }
 
 
@@ -969,34 +965,25 @@
    * ":", " " characters will be escaped.
    */
   _.dom.query = function(selector, el){
-    var nl = (el||document).querySelectorAll(_.html.escape_selector(selector));
-    //_.dom.extend_node_list(rt);
-    var rt = [];
-    for(var i =0, l=rt.length=nl.length; i<l; i++) rt[i]=nl[i];
-    return rt;
+    return (el||document).querySelectorAll(_.html.escape_selector(selector));
   }
 
 
-  _.dom.extend_node = function(node){
-    if(node){
+  _.dom.expand = function(node){
+    if(node && !node.hasOwnProperty(_._.namespace)){
       var n = node[_._.namespace] = {};
-      n.find = function(s){return _.dom.find(s, node)}
-      n.query = function(s){return _.dom.query(s, node)}
-    }
-  }
-
-
-  _.dom.extend_node_list = function(node_list){
-    if(node_list){
-      for(var i = 0; i < node_list.length; i++){
-        _.html.extend_node(node_list[i]);
-      }
-      node_list.each = function(c){
-        for(var i = 0; i < node_list.length; i++){
-          c(node_list[i]);
+      if(node instanceof NodeList){
+        n.each = function(c){
+          for(var i = 0; i < node.length; i++){
+            c.apply(node[i], [node[i], i]);
+          }
         }
+      }else if(node instanceof HTMLElement){
+        n.find = function(s){return _.dom.find(s, node)}
+        n.query = function(s){return _.dom.query(s, node)}
       }
     }
+    return node;
   }
 
 
@@ -1056,6 +1043,49 @@
   _.html.trim = function(html, tag){
     return html.replace(_.html.regex(tag), "");
   }
+
+
+
+
+  /* time.monitor :: a -> Integer -> Function -> Function
+   *
+   * Monitor a variable and validate after N seconds.
+   * Maybe convenience to observe events fired too many times in "1" action.
+   * (like GUI events: window(resize|loaded), mouse(move|drag|select)... etc.)
+   *
+   * @example
+   * Calling monitoring callback within 1.8sec will refreshe timestamp.
+   * In below example, when only window's width is changed, this will
+   * output message to the console after 1.8ec
+   *
+   * var m = FM.vr.monitor(1800);
+   *
+   * window.addEventListener('resize', function(){
+   *   m(
+   *     window.innerHeight,
+   *     function(p){
+   *       (p === window.innerHeight)
+   *         && console.log('Resized and kept innerHeight 1.8sec');
+   *     }
+   *   );
+   * });
+   *
+   *
+   */
+  _.time.monitor = function(tm){
+    var tl, fi;
+    return function(cur, clb){
+      fi = (!fi) ? cur : fi;
+      clearTimeout(tl);
+      tl = setTimeout(function(){
+        clb(fi);
+        tl = fi = undefined;
+      }, tm);
+    }
+  }
+
+
+
 
   // -- sandbox --------------------------------------------------------------
 
