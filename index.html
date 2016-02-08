@@ -1,6 +1,7 @@
 <html>
 
 <head>
+<title>FMJS</title>
 <script type="text/javascript" src="./src/fm.js"></script>
 <script src="https://rawgit.com/Matooy/codesnapjs/master/src/codesnap.js"></script>
 
@@ -29,6 +30,7 @@ pre>code {
 
 #codesnap-index {
   margin-bottom: 1em;
+  display: table;
 }
 
 .codesnap-index-anchor {
@@ -38,6 +40,16 @@ pre>code {
   text-decoration: none;
   border: 1px solid #ccc;
     padding: .1em .4em;
+}
+.index-row {
+  display: table-row;
+}
+.index-caption {
+  display: table-cell;
+  min-width: 80px;
+}
+.index-content {
+  display: table-cell;
 }
 
 .codesnap-container {
@@ -59,6 +71,16 @@ pre>code {
   color: #aaa;
 }
 
+li {
+}
+  li>span:first-of-type {
+    font-weight: bold;
+  }
+  li>span{
+    font-family: monospace;
+    display: inline-block;
+  }
+
 </style>
 
 </head>
@@ -68,6 +90,29 @@ pre>code {
 <div id="content" class="language-javascript">
   <h1>FMJS</h1>
   <p>A Collection of tiny helpers. "Functions by Matooy for JavaScript"</p>
+  <p>All functions is contained specific namespaces.</p>
+  <ul>
+    <li>
+      <span>vr.</span>
+      <span>variable</span>
+    </li>
+    <li>
+      <span>ob.</span>
+      <span>object</span>
+    </li>
+    <li>
+      <span>ar.</span>
+      <span>array</span>
+    </li>
+    <li>
+      <span>st.</span>
+      <span>string</span>
+    </li>
+    <li>
+      <span>fn.</span>
+      <span>function</span>
+    </li>
+  </ul>
 </div>
 
 <script>
@@ -92,10 +137,6 @@ var files = [
   ['vr.validall', {
     title: 'vr.validall',
     description: "Apply vr.valid() function to all arguments"
-  }],
-  ['vr.monitor', {
-    title: 'vr.monitor',
-    description: "Validate variable later and trigger callbacks. This may be convenient to observe event that triggered multiple times in a short term."
   }],
   ['ob.assign', {
     title: 'ob.assign',
@@ -179,36 +220,86 @@ var files = [
   }],
   ['fn.swear', {
     title: "fn.swear",
-    description: "Observe many of FM_Promise. $.when()"
-  }]
-
+    description: "Observe many of FM_Promise. Similar to jQuery.when()."
+  }],
+  ['event.create', {
+    title: 'event.create',
+    description: "Create a new CustomEvent instance."
+      + '<div>'
+      + '<button id="button-create-event-A" class="button">Button A</button>'
+      + '<button id="button-create-event-B" class="button">Button B</button>'
+      + '</div>'
+  }],
+  ['event.bind', {
+    title: 'event.bind',
+    description: "Bind CustomEvent to a specific element."
+  }],
+  ['time.monitor', {
+    title: 'time.monitor',
+    description: "Validate state later and trigger callbacks. This may be convenient to observe event that triggered multiple times in a short term like as window.onresize."
+  }],
+  ['html.singletons', {
+    title: 'html.singletons',
+    description: "Returns singleton element names as array."
+  }],
+  ['html.escape_selector', {
+    title: 'html.escape_selector',
+    description: "Escape all chars in selector for DOMQuery"
+  }],
 ];
 
 var result;
+var prevfile = null;
+var prevgroup = null;
 
 (new CodeSnap({
   wrapper: 'content',
   files: files,
-  before: function(){
-    result = undefined;
-  },
-  loaded: function(f, src){
-    var wrp = document.getElementById('codesnap-' +f[0]);
+  events: {
+    before_load: function(){
+      result = undefined;
+    },
+    loaded: function(f, src){
+      var wrp = document.getElementById('codesnap-' +f.name);
 
-    var res = document.createElement('pre');
-    var res_cap = document.createElement('div');
+      var res = document.createElement('pre');
+      var res_cap = document.createElement('div');
 
-    res.setAttribute('class', 'codesnap-result');
-    res.innerHTML = JSON.stringify(result);
+      res.setAttribute('class', 'codesnap-result');
+      res.innerHTML = JSON.stringify(result);
 
-    res_cap.innerHTML = 'content of result variable';
-    res_cap.setAttribute('class', 'codesnap-result-caption');
+      res_cap.innerHTML = 'content of result variable';
+      res_cap.setAttribute('class', 'codesnap-result-caption');
 
-    wrp.appendChild(res_cap);
-    wrp.appendChild(res);
+      wrp.appendChild(res_cap);
+      wrp.appendChild(res);
 
-    Prism.highlightElement(res);
-    Prism.highlightElement(document.getElementById('codesnap-' +f[0]+ '-code'));
+      Prism.highlightElement(res);
+      Prism.highlightElement(document.getElementById('codesnap-' +f.name+ '-code'));
+    },
+    indexed: function(wrap, anc, file){
+
+      var pns = prevfile ? prevfile.name.split(".")[0] : null;
+      var cns = file.name.split('.')[0];
+      var row, cap;
+
+      if(pns != cns){
+        row = document.createElement('div');
+          row.className = 'index-row';
+        cap = document.createElement('div');
+          cap.className = 'index-caption';
+          cap.innerHTML = cns + '.';
+        prevgroup = document.createElement('div');
+          prevgroup.className = 'index-content';
+
+        row.appendChild(cap);
+        row.appendChild(prevgroup);
+        wrap.appendChild(row);
+      }
+
+      prevfile = file;
+      prevgroup.appendChild(anc);
+    }
   }
 }).load());
 </script>

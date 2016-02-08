@@ -29,6 +29,9 @@
 
   // haha, finally, i cant use underscore and jquery anymore.
   var _ = {};
+  var cache = {
+    'event': []
+  };
 
   // Prepare.
   _._  = $;
@@ -44,16 +47,14 @@
   _.math = {};
   // File
   _.file = {};
-  // DOM
-  _.dom = {};
-  // Html
-  _.html = {};
   // Event
   _.event = {};
   // Time
   _.time = {};
   // Date
   _.date = {};
+  // HTTP
+  _.http = {};
 
 
 
@@ -112,6 +113,10 @@
     );
   }
 
+  _.vr.not_empty = function(a){
+    return !_.vr.empty(a);
+  }
+
 
   /* vr.is_f :: a -> Boolean
    *
@@ -119,6 +124,22 @@
    */
   _.vr.is_f = function(v){
     return _.vr.valid(v, 'function');
+  }
+
+  _.vr.is_a = function(v){
+    return _.vr.valid(v, 'array');
+  }
+
+  _.vr.is_o = function(v){
+    return _.vr.valid(v, 'object');
+  }
+
+  _.vr.is_s = function(v){
+    return _.vr.valid(v, 'string');
+  }
+
+  _.vr.is_i = function(v){
+    return _.vr.valid(v, 'integer');
   }
 
 
@@ -330,7 +351,7 @@
   }
 
   _.ob.has = function(o, k){
-    return o.hasOwnProperty(k);
+    return (typeof o === 'object') && o.hasOwnProperty(k);
   }
 
   _.ob.know = function(o, k){
@@ -422,7 +443,9 @@
    * Convert arguments object to array.
    */
   _.ar.clone = function(a){
-    return Array.prototype.slice.call(a);
+    var r = new Array(a.length);
+    for(var i = 0; i < a.length; i++){ r[i] = a[i]; }
+    return r;
   }
 
 
@@ -602,6 +625,12 @@
   }
 
 
+  /* fn.instance :: Function -> Object
+   *
+   * Create new instance with arguments
+   * (For who hates 'new' word.)
+   *
+   */
   _.fn.instance = function(constructor){
     return new (Function.prototype.bind.call(constructor, _.ar.clone(arguments).slice(1)));
   }
@@ -740,12 +769,12 @@
    *
    */
   _.fn.promise = function(process){
-    return new (function FM_Promise(){
+    function FM_Promise(){
       // Privates.
       var queue    = {'resolved': [], 'rejected': []};
       var state    = undefined;
       var previous = undefined;
-      var triggeer = undefined;
+      var trigger = undefined;
 
       function flush(){
         for(var i = 0; i < queue[state].length; i++){
@@ -781,7 +810,7 @@
       this.always = _.fn.proxy(function(callback){
         this.then(callback, callback);
         return this;
-      });
+      }, this);
 
       // resolve(), reject()
       [['resolve', 'resolved']
@@ -802,7 +831,9 @@
             )
           : (_.fn.proxy(function(){ this.resolve(process) }, this))()
       );
-    })();
+    };
+
+    return new FM_Promise();
   }
 
 
@@ -906,38 +937,106 @@
   }
 
 
-  _.event.create = function(ev, p){
-    var evo = new CustomEvent(ev, (_.vr.valid(p, 'function') ? p(ev) : p));
-    return evo;
+  _.event.create = function(e, p){
+
+    var evs = e.split('.');
+    var evn = evs[0];
+    var evi = evs[1] || "";
+
+    function FM_Event(e, p){
+      this.id = e;
+      this.type = evn;
+      this.namespace = evi;
+      if (document.createEvent) {
+        this.event = document.createEvent("HTMLEvents");
+        this.event.initEvent(e, true, true);
+      } else {
+        this.event = document.createEventObject();
+        this.event.eventType = e;
+      }
+    }
+
+    return new FM_Event(e, p);
   }
 
 
-  _.event.bind = function(el, ev, c, p){
+  /* event.bind
+   */
+  _.event.bind = function(target, ev, c, p, d){
 
-    var ei = new Object({
-      type: ev
-    , delegated: el
-    , parameter: p
-    });
+    var i, evo;
 
-    var fn = function(e){
-      ei.origin = e;
-      ei.target = el;
-      c.call(c, ei);
+    if(_.ob.has(target, 'length') && target.length){
+      for(i = 0; i < target.length; i++){
+        _.event.bind(target[i], ev, c, p, d);
+      }
+      return target;
+    }
+
+    evo = _.event.create(ev, c, p);
+    evo.target = target;
+    evo.parameter = p;
+
+    evo.handle = function(e){
+      evo.origin = e;
+      (c || function(){}).call(c, evo);
     };
 
-    ei.listener = fn;
-    el.addEventListener(ev, fn);
+    if(target.addEventListener){
+      target.addEventListener(evo.type, evo.handle, d || false);
+    }else if(target.attachEvent){
+      target.attachEvent('on' + evo.type, evo.handle);
+    }
 
-    return ei;
-  };
+    var found = false;
+    for(var i = 0; i < cache.event.length; i++){
+      var cc = cache.event[i];
+      if(
+        cc.target === target
+        &&
+        cc.id === ev
+      ){
+        found = true;
+        break;
+      }
+    }
+
+    (!found) && cache.event.push(evo);
+
+    return target;
+  }
 
 
   /* unbind :: DOMElement -> Object
    *
    */
-  _.event.unbind = function(el, evo){
-    return (el.removeEventListener) && el.removeEventListener(evo.type, evo.listener);
+  _.event.unbind = function(el, ev){
+    if(_.ob.has(el, 'length') && el.length){
+      for(var i = 0; i < el.length; i++){
+        _.event.unbind(el[i], ev);
+      }
+    }else{
+      for(var i = 0; i < cache.event.length; i++){
+        var e = cache.event[i];
+        if(
+          e.target === el
+          &&
+          (
+           (e.namespace.length === 0 && e.type === ev)
+           || el.id === ev
+          )
+        ){
+          if(target.removeEventListener){
+            el.removeEventListener(e.id);
+          }else if(target.detachEvent){
+            el.detachEvent('on'+ e.id);
+          }
+          delete cache.event[i];
+        }
+      }
+      cache.event[i].sort();
+    }
+
   }
 
 
@@ -945,104 +1044,32 @@
    *
    */
   _.event.trigger = function(el, ev, p){
-    var cl = _.event.create.apply(null, [ev, p]);
-    el.dispatchEvent(cl);
-    return cl;
-  };
-
-
-
-
-  _.dom.find = function(selector, el){
-    return (!_.vr.empty(el)?el:document).querySelector(_.html.escape_selector(selector));
-  }
-
-
-  /* html.query :: String -> Array
-   *
-   * return Array which converted from querySelectorAll result(s).
-   *
-   * ":", " " characters will be escaped.
-   */
-  _.dom.query = function(selector, el){
-    return (el||document).querySelectorAll(_.html.escape_selector(selector));
-  }
-
-
-  _.dom.expand = function(node){
-    if(node && !node.hasOwnProperty(_._.namespace)){
-      var n = node[_._.namespace] = {};
-      if(node instanceof NodeList){
-        n.each = function(c){
-          for(var i = 0; i < node.length; i++){
-            c.apply(node[i], [node[i], i]);
+    if(_.ob.has(el, 'length') && el.length){
+      for(var i = 0; i < el.length; i++){
+        _.event.trigger(el[i], ev, p);
+      }
+    }else{
+      for(var i = 0; i < cache.event.length; i++){
+        var e = cache.event[i];
+        if(
+          e.target === el
+          &&
+          (
+           (e.namespace.length === 0 && e.type === ev)
+           || el.id === ev
+          )
+        ){
+          if(el.dispatchEvent){
+            el.dispatchEvent(e.event);
+          }else if(el.fireEvent){
+            el.fireEvent('on' + e.type, e.event);
+          }else{
+            e.handle(p);
           }
         }
-      }else if(node instanceof HTMLElement){
-        n.find = function(s){return _.dom.find(s, node)}
-        n.query = function(s){return _.dom.query(s, node)}
       }
     }
-    return node;
-  }
-
-
-
-
-  /* html.singletons :: Array
-   *
-   * !! DONT trust this.
-   *
-   * Return singleton HTML tag names
-   *
-   */
-  _.html.singletons = function(){
-    return [
-      'meta', 'base', 'meta', 'param', 'isindex', 'link', 'basefont',
-      'area', 'br', 'col', 'frame', 'hr', 'img', 'input'
-    ];
-  }
-
-
-  _.html.escape_selector = function(selector){
-    var es = new RegExp('([:| ])', 'g');
-    return selector.replace(es, '\\$1');
-  }
-
-
-  /* html.regex :: String -> RegExp
-   *
-   * !! DONT trust this.
-   *
-   * This is not a HTML parser.
-   * Only for html that has no same-elem-nests.
-   *
-   *** Available - Sorry, able to match simple 1 hier structure only.
-   *
-   * <div><p></p><img /></div>
-   *
-   *** Unavailable - CANT match propery below.
-   *
-   * <div><div><div></div><span></span><div><p></p></div>
-   */
-  _.html.regex = function(tag){
-    var n,c,l;
-    n = _.ar.has(_.html.singletons(), tag);
-    c = l = (n ? '(.*?)>' : '<\\/'+tag+'>');
-    (n) && (l = '');
-    return new RegExp('<'+tag+'\\b[^<]*(?:(?!'+c+')<[^<]*)*'+l, 'gi');
-  }
-
-
-  /* html.trim :: String -> String -> String
-   *
-   * !! DONT trust this
-   *
-   * This uses html.regex method.
-   */
-  _.html.trim = function(html, tag){
-    return html.replace(_.html.regex(tag), "");
-  }
+  };
 
 
 
@@ -1058,7 +1085,7 @@
    * In below example, when only window's width is changed, this will
    * output message to the console after 1.8ec
    *
-   * var m = FM.vr.monitor(1800);
+   * var m = FM.time.monitor(1800);
    *
    * window.addEventListener('resize', function(){
    *   m(
@@ -1075,13 +1102,109 @@
   _.time.monitor = function(tm){
     var tl, fi;
     return function(cur, clb){
-      fi = (!fi) ? cur : fi;
+      fi = cur;
       clearTimeout(tl);
       tl = setTimeout(function(){
         clb(fi);
         tl = fi = undefined;
       }, tm);
     }
+  }
+
+
+  _.http.serialize = function(o){
+    var part = [];
+    for(var k in o){
+      var k = encodeURIComponent(k),
+          v = encodeURIComponent(o[k]);
+
+      part.push(k + '=' + v);
+    }
+    return part.join('&');
+  }
+
+
+  _.http.send = function(param){
+    var xhr = new XMLHttpRequest();
+    var promise = _.fn.promise();
+    var param  = _.vr.valid(param, 'object') ? param : {};
+    var request = {};
+    var response = {};
+
+    param.method = (_.ob.has(param, 'method')) ? param.method : 'get';
+    param.url    = (_.ob.has(param, 'url') ? param.url : document.URL);
+    param.data   = (_.ob.has(param, 'data') ? param.data : {});
+
+    request.body = _.http.serialize(param.data);
+    request.type = _.ob.has(param, 'type') ? param.type : 'text';
+
+    xhr.responseType = request.type;
+    xhr.onreadystatechange = function(){
+      switch ( xhr.readyState ) {
+        case 0: // UNSENT
+          break;
+        case 1: // OPENED
+          break;
+        case 2: // HEADERS_RECEIVED
+          break;
+        case 3: // LOADING
+          break;
+        case 4: // DONE
+
+          var result = {
+            'xhr': xhr,
+            'response': xhr.response,
+            'status': xhr.status,
+            'header': (function(headers){
+              return headers.split(/(?:\r\n|[\n\v\f\r\x85\u2028\u2029])/).reduce(function(m, v){
+                var k, s, c;
+                if(!_.vr.empty(v)){
+                  c = v.split(': ');
+                  k = c[0];
+                  s = c.slice(1).join(': ');
+                  m[k] = s;
+                }
+                return m;
+              }, {});
+            })(xhr.getAllResponseHeaders())
+          };
+
+          if( xhr.status == 200 || xhr.status == 304 ) {
+            promise.resolve(result.response, result);
+          }else{
+            promise.reject(result.response, result);
+          }
+          xhr.abort();
+          break;
+      }
+    }
+
+    try{
+      xhr.open(param.method, param.url, true);
+      xhr.send(null);
+    }catch(e){
+      promise.reject({
+        status: xhr.status,
+        error: e
+      });
+    }
+    return promise;
+  }
+
+
+  _.http.post = function(url, data, arg){
+    return _.http.send(_.ob.merge({
+      method: 'post',
+      data: data
+    }, arg));
+  }
+
+
+  _.http.get = function(url, data, arg){
+    return _.http.send(_.ob.merge({
+      method: 'get',
+      data: data
+    }, arg));
   }
 
 

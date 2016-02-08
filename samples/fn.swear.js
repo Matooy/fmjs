@@ -8,5 +8,5 @@ setTimeout(function(){
 }, 2000);
 
 var s = FM.fn.swear(s1, s2).then(function(){
-  console.log('Your oath was bound.');
+  console.log('[fn.swear] Your oath was bound.');
 });
